@@ -1,0 +1,21 @@
+{
+  "name": "olhoneycomb",
+  "version": "0.1.0",
+  "description": "Openlayers honeycomb layer source extension",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Openlayers",
+    "honeycomb"
+  ],
+  "author": "zxyao",
+  "license": "MIT",
+  "dependencies": {
+    "ol": "^6.3.1"
+  },
+  "devDependencies": {
+    "@types/ol": "^6.3.1"
+  }
+}
