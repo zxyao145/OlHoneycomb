@@ -1,8 +1,8 @@
 {
   "name": "olhoneycomb",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Openlayers honeycomb layer source extension",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
     "test": "",
     "build": "tsc",
