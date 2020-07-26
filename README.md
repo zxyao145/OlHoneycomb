@@ -16,7 +16,7 @@ Openlayers honeycomb layer source extension.
 
 Like using cluster：
 
-** install **
+**install**
 
 ``` bash
 npm i olhoneycomb
@@ -24,10 +24,10 @@ npm i olhoneycomb
 
 &nbsp; 
 
-** import and using ** 
+**import and using** 
 
 ```typescript
-import Honeycomb from "Honeycomb"
+import Honeycomb from "olhoneycomb"
 
 const source = new VectorSource({ features: features });
 
