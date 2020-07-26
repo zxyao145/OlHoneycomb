@@ -30,29 +30,32 @@ var Honeycomb = /** @class */ (function (_super) {
     function Honeycomb(options) {
         var _this = _super.call(this, {
             attributions: options.attributions,
-            wrapX: options.wrapX
+            wrapX: options.wrapX,
         }) || this;
         _this.resolution = undefined;
-        _this._radius = options.radius !== undefined
-            ? options.radius > 0 ? options.radius : 20
-            : 20;
+        _this._radius = options.radius !== undefined ? (options.radius > 0 ? options.radius : 20) : 20;
         _this.features = [];
-        _this.geometryFunction = options.geometryFunction || function (feature) {
-            var geometry = feature.getGeometry();
-            asserts_1.assert(geometry.getType() === GeometryType_1.default.POINT, 10); // The default `geometryFunction` can only handle `Point` geometries
-            return geometry;
-        };
-        _this.boundRefresh_ = _this.refresh.bind(_this);
+        if (options.geometryFunction) {
+            _this.geometryFunction = options.geometryFunction;
+        }
+        else {
+            _this.geometryFunction = function (feature) {
+                var geometry = feature.getGeometry();
+                asserts_1.assert(geometry.getType() === GeometryType_1.default.POINT, 10); // The default `geometryFunction` can only handle `Point` geometries
+                return geometry;
+            };
+        }
+        _this.boundRefresh = _this.refresh.bind(_this);
         _this.setSource(options.source || null);
         return _this;
     }
     /**
      * @override
      */
-    Honeycomb.prototype.clear = function (opt_fast) {
-        if (opt_fast === void 0) { opt_fast = false; }
+    Honeycomb.prototype.clear = function (optFast) {
+        if (optFast === void 0) { optFast = false; }
         this.features.length = 0;
-        _super.prototype.clear.call(this, opt_fast);
+        _super.prototype.clear.call(this, optFast);
     };
     Object.defineProperty(Honeycomb.prototype, "radius", {
         get: function () {
@@ -112,11 +115,11 @@ var Honeycomb = /** @class */ (function (_super) {
      */
     Honeycomb.prototype.setSource = function (source) {
         if (this.source) {
-            this.source.removeEventListener(EventType_1.default.CHANGE, this.boundRefresh_);
+            this.source.removeEventListener(EventType_1.default.CHANGE, this.boundRefresh);
         }
         this.source = source;
         if (source) {
-            source.addEventListener(EventType_1.default.CHANGE, this.boundRefresh_);
+            source.addEventListener(EventType_1.default.CHANGE, this.boundRefresh);
         }
         this.refresh();
     };
@@ -140,14 +143,14 @@ var Honeycomb = /** @class */ (function (_super) {
             return;
         }
         var extent = this.source.getExtent();
-        //this._radius 六边形外接圆半径
-        //半径
+        // this._radius 六边形外接圆半径
+        // 半径
         var radius = this._radius * this.resolution;
-        //半径的一半
+        // 半径的一半
         var halfR = radius >> 1;
-        //行高
+        // 行高
         var rowH = radius + halfR;
-        //列宽的一半   
+        // 列宽的一半
         var halfW = radius * Math.sin(Math.PI / 3);
         var colW = halfW << 1;
         var minx = extent[0], miny = extent[1];
@@ -159,35 +162,36 @@ var Honeycomb = /** @class */ (function (_super) {
             var feature = features[i];
             var geometry = this.geometryFunction(feature);
             if (geometry) {
-                //获取当前点 
+                // 获取当前点
                 var coordinates = geometry.getCoordinates();
                 var ptX = coordinates[0], ptY = coordinates[1];
                 var mayRow = Math.floor((ptY - miny) / rowH);
-                var pxPy = ((mayRow & 1) === 0) ? ptX : (ptX + halfW);
+                var pxPy = (mayRow & 1) === 0 ? ptX : ptX + halfW;
                 var mayCol = Math.floor((pxPy - minx) / colW);
                 var curRowBottom = mayRow * rowH + miny;
                 var disputeBottom = curRowBottom + radius;
-                //处于争议区
+                // 处于争议区
                 if (ptY > disputeBottom) {
                     var disputeTop = disputeBottom + halfR;
                     var curLeft = mayCol * colW;
-                    var curCenterX = curLeft + halfW, curRight = curLeft + colW;
+                    var curCenterX = curLeft + halfW;
+                    var curRight = curLeft + colW;
                     var trangle = [
                         [curCenterX, disputeTop],
                         [curRight, disputeBottom],
-                        [curLeft, disputeBottom]
+                        [curLeft, disputeBottom],
                     ];
                     if (!this.containsPoint(trangle, coordinates)) {
                         mayRow += 1;
                     }
                 }
                 var _a = [mayCol, mayRow], col = _a[0], row = _a[1];
-                var key = col + '-' + row;
+                var key = col + "-" + row;
                 if (!clusterDict.has(key)) {
                     var fe = this.createHoneycombByColRow(col, row, minx, miny, colW, rowH, radius, halfR, halfW);
                     clusterDict.set(key, {
                         feature: fe,
-                        features: [feature]
+                        features: [feature],
                     });
                 }
                 else {
@@ -204,7 +208,7 @@ var Honeycomb = /** @class */ (function (_super) {
         this.features = curClusterFeatures;
     };
     Honeycomb.prototype.containsPoint = function (points, pt) {
-        //乘积
+        // 乘积
         var product = null;
         for (var i = 0; i < 3; i++) {
             var point = points[i];
@@ -244,11 +248,11 @@ var Honeycomb = /** @class */ (function (_super) {
             [right, y1],
             [right, top2],
             [center, top2 + halfR],
-            [x1, top2]
+            [x1, top2],
         ];
         var polygon = new Polygon_1.default([points]);
         var cluster = new Feature_1.default({
-            geometry: polygon
+            geometry: polygon,
         });
         return cluster;
     };

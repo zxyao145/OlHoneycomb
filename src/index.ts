@@ -1,17 +1,15 @@
-import { assert } from 'ol/asserts';
-import GeometryType from 'ol/geom/GeometryType';
-import EventType from 'ol/events/EventType';
-import { Vector as VectorSource } from "ol/source"
-import Feature from 'ol/Feature';
-import Polygon from 'ol/geom/Polygon';
+import { assert } from "ol/asserts";
+import GeometryType from "ol/geom/GeometryType";
+import EventType from "ol/events/EventType";
+import { Vector as VectorSource } from "ol/source";
+import Feature from "ol/Feature";
+import Polygon from "ol/geom/Polygon";
 
-
-import Geometry from 'ol/geom/Geometry';
-import { AttributionLike } from 'ol/source/Source';
-import Point from 'ol/geom/Point';
-import { Extent } from 'ol/extent';
-import Projection from 'ol/proj/Projection';
-
+import Geometry from "ol/geom/Geometry";
+import { AttributionLike } from "ol/source/Source";
+import Point from "ol/geom/Point";
+import { Extent } from "ol/extent";
+import Projection from "ol/proj/Projection";
 
 export interface Options {
   attributions?: AttributionLike;
@@ -27,45 +25,45 @@ export interface Options {
 
 export default class Honeycomb extends VectorSource {
   resolution: number | undefined;
-  _radius: any;
-  features: any[];
-  geometryFunction: any;
-  boundRefresh_: any;
+  _radius: number;
+  features: Feature[];
+  geometryFunction: (feature: Feature) => Geometry;
+  boundRefresh: any;
 
   source!: VectorSource | null;
 
   constructor(options: Options) {
     super({
       attributions: options.attributions,
-      wrapX: options.wrapX
+      wrapX: options.wrapX,
     });
-
 
     this.resolution = undefined;
 
-    this._radius = options.radius !== undefined
-      ? options.radius > 0 ? options.radius : 20
-      : 20;
+    this._radius = options.radius !== undefined ? (options.radius > 0 ? options.radius : 20) : 20;
 
     this.features = [];
 
-    this.geometryFunction = options.geometryFunction || function (feature:Feature) {
-      const geometry = feature.getGeometry();
-      assert(geometry.getType() === GeometryType.POINT,
-        10); // The default `geometryFunction` can only handle `Point` geometries
-      return geometry;
-    };
+    if (options.geometryFunction) {
+      this.geometryFunction = options.geometryFunction;
+    } else {
+      this.geometryFunction = (feature: Feature) => {
+        const geometry = feature.getGeometry();
+        assert(geometry.getType() === GeometryType.POINT, 10); // The default `geometryFunction` can only handle `Point` geometries
+        return geometry;
+      };
+    }
 
-    this.boundRefresh_ = this.refresh.bind(this);
+    this.boundRefresh = this.refresh.bind(this);
     this.setSource(options.source || null);
   }
 
   /**
    * @override
    */
-  clear(opt_fast: boolean | undefined = false) {
+  clear(optFast: boolean | undefined = false) {
     this.features.length = 0;
-    super.clear(opt_fast);
+    super.clear(optFast);
   }
 
   get radius() {
@@ -93,10 +91,9 @@ export default class Honeycomb extends VectorSource {
    * @param {number} radius The distance in pixels.
    * @api
    */
-  setRadius(radius:number) {
+  setRadius(radius: number) {
     this._radius = radius;
   }
-
 
   /**
    * Get a reference to the wrapped source.
@@ -111,7 +108,7 @@ export default class Honeycomb extends VectorSource {
    * @inheritDoc
    */
   loadFeatures(extent: Extent, resolution: number, projection: Projection) {
-    if(this.source){
+    if (this.source) {
       this.source.loadFeatures(extent, resolution, projection);
       if (resolution !== this.resolution) {
         this.clear();
@@ -127,13 +124,13 @@ export default class Honeycomb extends VectorSource {
    * @param {VectorSource} source The new source for this instance.
    * @api
    */
-  setSource(source:VectorSource | null) {
+  setSource(source: VectorSource | null) {
     if (this.source) {
-      this.source.removeEventListener(EventType.CHANGE, this.boundRefresh_);
+      this.source.removeEventListener(EventType.CHANGE, this.boundRefresh);
     }
     this.source = source;
     if (source) {
-      source.addEventListener(EventType.CHANGE, this.boundRefresh_);
+      source.addEventListener(EventType.CHANGE, this.boundRefresh);
     }
     this.refresh();
   }
@@ -161,14 +158,14 @@ export default class Honeycomb extends VectorSource {
     }
 
     const extent = this.source.getExtent();
-    //this._radius 六边形外接圆半径
-    //半径
+    // this._radius 六边形外接圆半径
+    // 半径
     const radius = this._radius * this.resolution;
-    //半径的一半
-    let halfR = radius >> 1;
-    //行高
+    // 半径的一半
+    const halfR = radius >> 1;
+    // 行高
     const rowH = radius + halfR;
-    //列宽的一半   
+    // 列宽的一半
     const halfW = radius * Math.sin(Math.PI / 3);
     const colW = halfW << 1;
 
@@ -178,53 +175,49 @@ export default class Honeycomb extends VectorSource {
 
     const features = this.source.getFeatures();
 
-    let clusterDict = new Map();
+    const clusterDict = new Map();
 
     for (let i = 0, ii = features.length; i < ii; i++) {
       const feature = features[i];
       const geometry = this.geometryFunction(feature);
       if (geometry) {
-        //获取当前点 
-        const coordinates = geometry.getCoordinates();
+        // 获取当前点
+        const coordinates = (geometry as Point).getCoordinates();
         const [ptX, ptY] = coordinates;
         let mayRow = Math.floor((ptY - miny) / rowH);
-        let pxPy = ((mayRow & 1) === 0) ? ptX : (ptX + halfW);
-        let mayCol = Math.floor((pxPy - minx) / colW)
+        const pxPy = (mayRow & 1) === 0 ? ptX : ptX + halfW;
+        const mayCol = Math.floor((pxPy - minx) / colW);
 
-        
-        let curRowBottom = mayRow * rowH + miny;
-        let disputeBottom = curRowBottom + radius;
+        const curRowBottom = mayRow * rowH + miny;
+        const disputeBottom = curRowBottom + radius;
 
-        //处于争议区
+        // 处于争议区
         if (ptY > disputeBottom) {
-          let disputeTop = disputeBottom + halfR;
+          const disputeTop = disputeBottom + halfR;
 
-          let curLeft = mayCol * colW;
-          let curCenterX = curLeft + halfW,
-            curRight = curLeft + colW;
+          const curLeft = mayCol * colW;
+          const curCenterX = curLeft + halfW;
+          const curRight = curLeft + colW;
 
-          let trangle:Array<Array<number>> = [
+          const trangle: Array<Array<number>> = [
             [curCenterX, disputeTop],
             [curRight, disputeBottom],
-            [curLeft, disputeBottom]
-          ]
+            [curLeft, disputeBottom],
+          ];
           if (!this.containsPoint(trangle, coordinates)) {
             mayRow += 1;
           }
         }
 
         const [col, row] = [mayCol, mayRow];
-        let key = col + '-' + row;
+        const key = col + "-" + row;
 
         if (!clusterDict.has(key)) {
-          let fe = this.createHoneycombByColRow(col, row,
-            minx, miny,
-            colW, rowH,
-            radius, halfR, halfW);
+          const fe = this.createHoneycombByColRow(col, row, minx, miny, colW, rowH, radius, halfR, halfW);
 
           clusterDict.set(key, {
             feature: fe,
-            features: [feature]
+            features: [feature],
           });
         } else {
           clusterDict.get(key).features.push(feature);
@@ -232,28 +225,28 @@ export default class Honeycomb extends VectorSource {
       }
     }
 
-    let curClusterFeatures:Array<Feature> = [];
+    const curClusterFeatures: Array<Feature> = [];
 
-    clusterDict.forEach((featureInfo: any, key:any) => {
+    clusterDict.forEach((featureInfo: any, key: any) => {
       const curFeature = featureInfo.feature;
-      curFeature.set("features", featureInfo.features)
-      curClusterFeatures.push(curFeature)
-    })
-    
+      curFeature.set("features", featureInfo.features);
+      curClusterFeatures.push(curFeature);
+    });
+
     this.features = curClusterFeatures;
   }
 
-  containsPoint(points:Array<Array<number>>, pt:Array<number>) {
-    //乘积
+  containsPoint(points: Array<Array<number>>, pt: Array<number>) {
+    // 乘积
     let product: number | null = null;
     for (let i = 0; i < 3; i++) {
-      let point = points[i];
-      let nextPoint = points[i % 2];
+      const point = points[i];
+      const nextPoint = points[i % 2];
 
-      let vectorA = [pt[0] - point[0], pt[1] - point[1]];
-      let vectorB = [nextPoint[0] - pt[0], nextPoint[1] - pt[1]];
+      const vectorA = [pt[0] - point[0], pt[1] - point[1]];
+      const vectorB = [nextPoint[0] - pt[0], nextPoint[1] - pt[1]];
 
-      let r = vectorA[0] * vectorB[1] - vectorA[1] * vectorB[0]
+      let r = vectorA[0] * vectorB[1] - vectorA[1] * vectorB[0];
       if (r === 0) {
         product = 0;
         break;
@@ -264,27 +257,33 @@ export default class Honeycomb extends VectorSource {
       if (i === 0) {
         product = r;
       } else {
-        product !*= r;
+        product! *= r;
       }
     }
-    if (product !< 0) {
+    if (product! < 0) {
       return false;
     }
     return true;
   }
 
-  createHoneycombByColRow(col: number, row: number,
-    minX: number, minY: number,
-    colW: number, rowH: number,
-    r: number, halfR: number, halfW: number) {
-
+  createHoneycombByColRow(
+    col: number,
+    row: number,
+    minX: number,
+    minY: number,
+    colW: number,
+    rowH: number,
+    r: number,
+    halfR: number,
+    halfW: number,
+  ) {
     const y1 = row * rowH + minY;
     let x1 = col * colW + minX;
     if ((row & 1) === 1) {
       x1 -= halfW;
     }
     const center = x1 + halfW;
-    const right = center + halfW
+    const right = center + halfW;
     const top2 = y1 + r;
 
     const points = [
@@ -293,15 +292,14 @@ export default class Honeycomb extends VectorSource {
       [right, y1],
       [right, top2],
       [center, top2 + halfR],
-      [x1, top2]
-    ]
-    
-    let polygon = new Polygon([points]);
+      [x1, top2],
+    ];
+
+    const polygon = new Polygon([points]);
 
     const cluster = new Feature({
-      geometry: polygon
+      geometry: polygon,
     });
     return cluster;
   }
-
 }

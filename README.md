@@ -16,6 +16,16 @@ Openlayers honeycomb layer source extension.
 
 Like using cluster：
 
+** install **
+
+``` bash
+npm i olhoneycomb
+```
+
+&nbsp; 
+
+** import and using ** 
+
 ```typescript
 import Honeycomb from "Honeycomb"
 
