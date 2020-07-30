@@ -1,5 +1,7 @@
 # OlHoneycomb
 
+[![npm](https://img.shields.io/npm/v/olhoneycomb)](https://www.npmjs.com/package/olhoneycomb)
+
 Openlayers honeycomb layer source extension.
 
 [Live Demo](https://zxyao145.github.io/OlHoneycomb/)
